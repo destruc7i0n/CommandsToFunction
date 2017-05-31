@@ -2,6 +2,7 @@
 # MrGarretto for the code for traversing the command block chain https://mrgarretto.com
 
 import mcplatform
+import codecs
 
 __version__ = "V1.4.1"
 
@@ -43,64 +44,65 @@ def perform(level, box, options):
 
     # code below is based from MrGarretto
 
-    for y in xrange(box.miny, box.maxy):
-        for x in xrange(box.minx, box.maxx):
-            for z in xrange(box.minz, box.maxz):
-                if level.blockAt(x, y, z) == 210:
-                    doneChain = 0
-                    chX = x
-                    chY = y
-                    chZ = z
-                    whileIndex = 0
-                    while (doneChain == 0):
-                        if (level.blockAt(chX, chY, chZ) == 210 and whileIndex == 0) or level.blockAt(chX, chY, chZ) == 211:
-                            bX = chX
-                            bY = chY
-                            bZ = chZ
-                            if level.blockDataAt(chX, chY, chZ) == 0 or level.blockDataAt(chX, chY, chZ) == 8:
-                                chY -= 1
-                            elif level.blockDataAt(chX, chY, chZ) == 1 or level.blockDataAt(chX, chY, chZ) == 9:
-                                chY += 1
-                            elif level.blockDataAt(chX, chY, chZ) == 2 or level.blockDataAt(chX, chY, chZ) == 10:
-                                chZ -= 1
-                            elif level.blockDataAt(chX, chY, chZ) == 3 or level.blockDataAt(chX, chY, chZ) == 11:
-                                chZ += 1
-                            elif level.blockDataAt(chX, chY, chZ) == 4 or level.blockDataAt(chX, chY, chZ) == 12:
-                                chX -= 1
-                            elif level.blockDataAt(chX, chY, chZ) == 5 or level.blockDataAt(chX, chY, chZ) == 13:
-                                chX += 1
+    # since the box is 1x1x1, this is all we need
+    x, y, z = box.origin
 
-                            if level.blockDataAt(bX, bY, bZ) > 7:
-                                # check if there are is not an aec there, otherwise add it
-                                if len(pre) < 3:
-                                    pre += addPre()
+    if level.blockAt(x, y, z) == 210 or level.blockAt(x, y, z) == 137:
+        doneChain = 0
+        chX = x
+        chY = y
+        chZ = z
+        whileIndex = 0
+        while (doneChain == 0):
+            if (level.blockAt(chX, chY, chZ) == 210 and whileIndex == 0) or (level.blockAt(chX, chY, chZ) == 137 and whileIndex == 0) or level.blockAt(chX, chY, chZ) == 211:
+                bX = chX
+                bY = chY
+                bZ = chZ
+                if level.blockDataAt(chX, chY, chZ) == 0 or level.blockDataAt(chX, chY, chZ) == 8:
+                    chY -= 1
+                elif level.blockDataAt(chX, chY, chZ) == 1 or level.blockDataAt(chX, chY, chZ) == 9:
+                    chY += 1
+                elif level.blockDataAt(chX, chY, chZ) == 2 or level.blockDataAt(chX, chY, chZ) == 10:
+                    chZ -= 1
+                elif level.blockDataAt(chX, chY, chZ) == 3 or level.blockDataAt(chX, chY, chZ) == 11:
+                    chZ += 1
+                elif level.blockDataAt(chX, chY, chZ) == 4 or level.blockDataAt(chX, chY, chZ) == 12:
+                    chX -= 1
+                elif level.blockDataAt(chX, chY, chZ) == 5 or level.blockDataAt(chX, chY, chZ) == 13:
+                    chX += 1
 
-                                conditional_count += 1
+                # ignore impulse command blocks from conditional checks
+                if level.blockDataAt(bX, bY, bZ) > 7 and level.blockAt(chX, chY, chZ) != 137:
+                    # check if there are is not an aec there, otherwise add it
+                    if len(pre) < 3:
+                        pre += addPre()
 
-                                prefix = ""
-                                if conditional_count == 1:
-                                    # add init command to the last command
-                                    init_command = "execute @e[type=area_effect_cloud,tag=%s] ~ ~ ~ " % tag
-                                    cmds[-1] = init_command + cmds[-1]
+                    conditional_count += 1
 
-                                prefix = "execute @e[type=area_effect_cloud,tag=%s,score_SuccessCount_min=1] ~ ~ ~ " % tag
-                            else:
-                                # reset the prefix and count of conditionals if more than one
-                                conditional_count = 0
-                                prefix = ""
+                    prefix = ""
+                    if conditional_count == 1:
+                        # add init command to the last command
+                        init_command = "execute @e[type=area_effect_cloud,tag=%s] ~ ~ ~ " % tag
+                        cmds[-1] = init_command + cmds[-1]
 
-                            command = level.tileEntityAt(bX, bY, bZ)["Command"].value
+                    prefix = "execute @e[type=area_effect_cloud,tag=%s,score_SuccessCount_min=1] ~ ~ ~ " % tag
+                else:
+                    # reset the prefix and count of conditionals if more than one
+                    conditional_count = 0
+                    prefix = ""
 
-                            # remove preceding slash if the command is non-blank
-                            if command:
-                                if command[0] == "/":
-                                    command = command[1:]
+                command = level.tileEntityAt(bX, bY, bZ)["Command"].value
 
-                            cmds.append(prefix + command)
+                # remove preceding slash if the command is non-blank
+                if command:
+                    if command[0] == "/":
+                        command = command[1:]
 
-                            whileIndex += 1
-                        else:
-                            doneChain = 1
+                cmds.append(prefix + command)
+
+                whileIndex += 1
+            else:
+                doneChain = 1
 
     # end code from MrGarretto
 
@@ -115,7 +117,7 @@ def perform(level, box, options):
         file_path = mcplatform.askSaveFile(".", "Save as...", tag, "*.mcfunction", "mcfunction")
 
         if file_path:
-            with open(file_path, "w") as file:
+            with codecs.open(file_path, "w", "utf-8") as file:
                 file.write(commands)
 
         # raise Exception to not save the world
